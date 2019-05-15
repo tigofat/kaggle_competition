@@ -17,9 +17,9 @@ def featurize(train, test):
     train: train dataframe with target column
     test: test dataframe without target column
     
-    wil preprocess train and test data (or train and validation data) 
-    and make shure there are no NaNs,
-    wil delete target column from train and return it in list
+    will preprocess train and test data (or train and validation data) 
+    and make sure there are no NaNs,
+    will delete target column from train and return it in list
     """
     used_columns = ['id', 'belongs_to_collection', 'budget',
                     'genres', 'homepage', 'imdb_id',
@@ -89,3 +89,4 @@ def featurize(train, test):
                     train.shape[0]:(train.shape[0] + test.shape[0])]
 
     return train_features, test_features, targets
+    

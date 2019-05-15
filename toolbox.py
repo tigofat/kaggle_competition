@@ -1,7 +1,11 @@
 import numpy as np
 import pandas as pd
 
+import operator
+import ast
+
 from sklearn.metrics import mean_squared_log_error
+
 
 def save_as_csv(id, revenue, file_name='submissions', **kwargs):
     
@@ -52,6 +56,39 @@ def get_features(dataframe, col_name, based_on, func, **kwargs):
     means = [(feature, func(dataframe[based_on][mask], **kwargs)) for mask, feature in feature_mask]
 
     return sorted(means, key=lambda x: x[1], reverse=True)
+
+
+def get_json_features(feature_column, json_key, estimate_with, oper=operator.add):
+
+	"""Featurize json feature columns easier.
+
+	Parameters
+
+	feature_column : pandas.Series where elements are in json format or falsy.
+	json_key : Name of the key, based on which estimator estimates.
+	estimate_with : Array/column/list where are values for each 'feature_column' 
+					(for example 'revenue')
+
+	Returns
+
+	dict : Sorted dictionary.
+	"""
+
+	proc_column = feature_column.apply(
+					lambda x: ast.literal_eval(x) if x else dict())
+
+	value_names = [dict[json_key] for dicts in proc_column 
+								for dict in dicts]
+	value_estim = {name: 0 for name in np.unique(value_names)}
+
+	for features, estim_value in zip(proc_column, estimate_with):
+		for feature in features:
+			value_estim[feature[json_key]] = oper(value_estim[feature[json_key]],
+													estim_value)
+
+	return sorted(value_estim.items(),
+					key=lambda x: x[1],
+					reverse=True)
 
 
 if __name__ == "__main__":
