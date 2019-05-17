@@ -58,13 +58,18 @@ def get_features(dataframe, col_name, based_on, func, **kwargs):
     return sorted(means, key=lambda x: x[1], reverse=True)
 
 
-def get_json_features(feature_column, json_key, estimate_with, oper=operator.add):
+def json_to_dict(feature_column):
+	return feature_column.apply(
+			lambda x: ast.literal_eval(x) if x else dict())
+
+
+def get_json_features(feature_column, key_value, estimate_with, oper=operator.add):
 
 	"""Featurize json feature columns easier.
 
 	Parameters
 
-	feature_column : pandas.Series where elements are in json format or falsy.
+	feature_column : pandas.Series where elements are list of dicts or falsy values.
 	json_key : Name of the key, based on which estimator estimates.
 	estimate_with : Array/column/list where are values for each 'feature_column' 
 					(for example 'revenue')
@@ -74,16 +79,14 @@ def get_json_features(feature_column, json_key, estimate_with, oper=operator.add
 	dict : Sorted dictionary.
 	"""
 
-	proc_column = feature_column.apply(
-					lambda x: ast.literal_eval(x) if x else dict())
-
-	value_names = [dict[json_key] for dicts in proc_column 
+	value_names = [dict[key_value] for dicts in feature_column 
 								for dict in dicts]
 	value_estim = {name: 0 for name in np.unique(value_names)}
+    
+	for features, estim_value in zip(feature_column, estimate_with):
 
-	for features, estim_value in zip(proc_column, estimate_with):
 		for feature in features:
-			value_estim[feature[json_key]] = oper(value_estim[feature[json_key]],
+			value_estim[feature[key_value]] = oper(value_estim[feature[key_value]],
 													estim_value)
 
 	return sorted(value_estim.items(),
