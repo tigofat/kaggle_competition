@@ -13,6 +13,30 @@ class YNormal:
         trans_data = (data - self.mean) / self.delta
         return trans_data
 
+def my_get_dummies(data, features):
+
+    """ :param
+        data:  pd.series, data which must be featurized
+        features:  list, feature values for which will be dummies
+
+        :returns
+        dataframe with columns named by features list and
+        with values 1 or 0 in each row of each column
+    """
+
+    filled_data = data.fillna('none')
+    dataframe = []
+    ary = []
+    for feature in features:
+        for i in range(len(data)):
+            ary.append(1 if feature in filled_data[i] else 0)
+        dataframe.append(ary)
+        ary = []
+    dataframe = pd.DataFrame(np.array(dataframe).T, columns=features)
+
+    return  dataframe
+
+
 
 def featurize(train, test):
     """
@@ -96,110 +120,36 @@ def featurize(train, test):
     features['no_homepage'] = np.array(
         pd.isna(data.homepage), dtype=int)
 
-
-    """ CREATE MORE FEATURES """
-
-    # Create features for 'genres'.
-    # As we saw in notebook, 'Action', 'Adventure', 'Drama'
-    # genres were the top 3 most important, 
-    # so we create features, by setting 
-    # all films that have one of these gnres to 1, otherwize 0
-    features['popular_genre'] = 0
-    features['non_popular_genre'] = 0
-
-    for i, row in data['genres'].iteritems():
-
-        feature_names = [feature['name'] for feature in row]
-
-        pop, non_pop = 0, 1
-
-        if set(feature_names) & set(['Action', 'Adventure', 
-                                    'Drama']):
-            pop, non_pop = non_pop, pop
-
-        # 'iat' function sets the value to given
-        features['popular_genre'].iat[i] = pop
-        features['non_popular_genre'].iat[i] = non_pop
-
-
-    # Do that same with 'non_pop_languages' and other columns 
-    # as we did from 'genres'
-    # features['pop_languages'] = 0
-    # features['non_pop_languages'] = 0
-
-    # for i, row in data['spoken_languages'].iteritems():
-
-    #     feature_names = [feature['name'] for feature in row]
-
-    #     pop, non_pop = 0, 1
-
-    #     if set(feature_names) & set(['English', 'Español', 
-    #                                 'Français', 'Deutsch', 
-    #                                 'Italiano', 'Pусский']):
-    #         pop, non_pop = non_pop, pop
-
-    #     # 'iat' function sets the value to given
-    #     features['pop_languages'].iat[i] = pop
-    #     features['non_pop_languages'].iat[i] = non_pop
-
-
-    # 'cast'
-    features['actor'] = 0
-    features['no_actor'] = 0
-
-    for i, row in data['cast'].iteritems():
-
-        feature_names = [feature['name'] for feature in row]
-
-        actor, no_actor = 0, 10
-
-        if set(feature_names) & set(['Samuel L. Jackson', 'Stan Lee', 
-                                    'Frank Welker', 'Jeremy Renner', 
-                                    'Johnny Depp', 'Tyrese Gibson',
-                                    'Judi Dench', 'John Turturro',
-                                    'John Turturro', 'Shia LaBeouf',
-                                    'Scarlett Johansson', 'Jess Harnell']):
-            actor, no_actor = no_actor, actor
-
-        # 'iat' function sets the value to given
-        features['actor'].iat[i] = actor
-        features['no_actor'].iat[i] = no_actor
-
-    """..."""
-
-    targets = train[["revenue"]]
     # reseparating featurized train and test data
     train_features = features[:train.shape[0]]
     test_features = features[
-                    train.shape[0]:(train.shape[0] + test.shape[0])]
+                    train.shape[0]:(train.shape[0] + test.shape[0])].reset_index()
+    test_features = test_features.drop(['index'], axis=1)
+
+    #dummie features
+    train_features = train_features.join(my_get_dummies(train['genres'],
+                                 ['Action', 'Adventure', 'Drama',
+                                  'Comedy', 'Thriller']))
+    test_features = test_features.join(my_get_dummies(test['genres'],
+                                 ['Action', 'Adventure', 'Drama',
+                                  'Comedy', 'Thriller']))
+
+    train_features = train_features.join(my_get_dummies(train['Keywords'],
+                                 ['duringcreditsstinger', 'aftercreditsstinger',
+                                  'superhero', 'sequel', '3d']))
+    test_features = test_features.join(my_get_dummies(test['Keywords'],
+                                 ['duringcreditsstinger', 'aftercreditsstinger',
+                                  'superhero', 'sequel', '3d']))
+
+    train_features = train_features.join(my_get_dummies(train['cast'],
+                                 ['Samuel L. Jackson', 'Stan Lee',
+                                  'Frank Welker', 'Jeremy Renner',
+                                  'Johnny Depp']))
+    test_features = test_features.join(my_get_dummies(test['cast'],
+                                 ['Samuel L. Jackson', 'Stan Lee',
+                                  'Frank Welker', 'Jeremy Renner',
+                                  'Johnny Depp']))
+
+    targets = np.log(train[["revenue"]])
 
     return train_features, test_features, targets
-    
-
-def my_get_dummies(data, features):
-
-    """ :param
-        data:  pd.series, data which must be featurized
-        features:  list, feature values for which will be dummies
-
-        :returns
-        dataframe with columns named by features list and
-        with values 1 or 0 in each row of each column
-    """
-
-    filled_data = data.fillna('none')
-    dataframe = []
-    ary = []
-    for feature in features:
-        for i in range(len(data)):
-            ary.append(int(feature in filled_data[i]))
-        dataframe.append(ary)
-        ary = []
-    dataframe = pd.DataFrame(np.array(dataframe).T, columns=features)
-    return  dataframe
-
-
-
-
-
-

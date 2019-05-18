@@ -39,7 +39,7 @@ def root_mean_squared_log_error(predictions, targets):
     sk_loss : the same loss implemeted with sklearn package.
     """
     
-    sum_ = np.sum(np.square(np.log(predictions - 1) - np.log(targets + 1)))
+    sum_ = np.sum(np.square(np.log(predictions + 1) - np.log(targets + 1)))
     loss = np.sqrt(sum_ / len(targets))
     sk_loss = np.sqrt(mean_squared_log_error(targets, predictions))
     return loss, sk_loss
