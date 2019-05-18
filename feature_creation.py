@@ -175,3 +175,31 @@ def featurize(train, test):
 
     return train_features, test_features, targets
     
+
+def my_get_dummies(data, features):
+
+    """ :param
+        data:  pd.series, data which must be featurized
+        features:  list, feature values for which will be dummies
+
+        :returns
+        dataframe with columns named by features list and
+        with values 1 or 0 in each row of each column
+    """
+
+    filled_data = data.fillna('none')
+    dataframe = []
+    ary = []
+    for feature in features:
+        for i in range(len(data)):
+            ary.append(int(feature in filled_data[i]))
+        dataframe.append(ary)
+        ary = []
+    dataframe = pd.DataFrame(np.array(dataframe).T, columns=features)
+    return  dataframe
+
+
+
+
+
+
