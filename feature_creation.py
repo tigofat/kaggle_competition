@@ -71,6 +71,10 @@ def featurize(train, test):
 
     for name in json_feat:
         data[name] = tb.json_to_dict(data[name])
+        
+    features['genders_0_crew'] = data.crew.apply(lambda x: sum(1 for item in x if item['gender'] == 0))
+    features['genders_1_crew'] = data.crew.apply(lambda x: sum(1 for item in x if item['gender'] == 1))
+    features['genders_2_crew'] = data.crew.apply(lambda x: sum(1 for item in x if item['gender'] == 2))
 
     # if film's 'belongs_to_collection' feature
     # is not nan: 'is_from_coll' feature is 1, else: 0
@@ -119,6 +123,27 @@ def featurize(train, test):
     # see comment for 'not_from_coll' feature, same for 'no_homepage' feat.
     features['no_homepage'] = np.array(
         pd.isna(data.homepage), dtype=int)
+    
+    # add release data feature
+    data['release_date'].replace(np.nan, '', inplace=True)
+    years = np.array([f'20{date[-2:]}' if date[-2:].startswith('0') else f'19{date[-2:]}' 
+                  for date in data['release_date'].values], dtype=int)
+    
+    data['release_year'] = years
+    release_date_mask = np.array((years <= 1900) + (years >= 1990), dtype=np.bool)
+    features['is_date'] = release_date_mask.astype(np.uint8)
+    features['not_date'] = (~release_date_mask).astype(np.uint8)
+    
+    # if the films title is the same 1, otherwise 0
+    features['is_same_title'] = 0
+    features['not_same_title'] = 0
+    same_title_mask = data.original_title == data.title
+    features['is_same_title'][same_title_mask] = 1
+    features['not_same_title'][~same_title_mask] = 1
+    
+    # in notebook is shown that if the json string is longer, that might be an important feature
+    features['genres_feature_len'] = data.genres.apply(lambda x : len(x) if x != dict() else 0)
+    features['cast_feature_len'] = data.cast.apply(lambda x: len(x) if x != dict() else 0)
 
     # reseparating featurized train and test data
     train_features = features[:train.shape[0]]
@@ -149,6 +174,13 @@ def featurize(train, test):
                                  ['Samuel L. Jackson', 'Stan Lee',
                                   'Frank Welker', 'Jeremy Renner',
                                   'Johnny Depp']))
+    
+    train_features = train_features.join(my_get_dummies(train['spoken_languages'],
+                                 ['English', 'Español', 'Français', 
+                                  'Deutsch']))
+    test_features = test_features.join(my_get_dummies(test['spoken_languages'],
+                                 ['English', 'Español', 'Français', 
+                                  'Deutsch']))
 
     targets = np.log(train[["revenue"]])
 

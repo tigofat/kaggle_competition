@@ -7,6 +7,27 @@ import ast
 from sklearn.metrics import mean_squared_log_error
 
 
+def cross_validation(estimator, X, y, folds=5, **kwargs):
+    
+    models_and_loss = []
+    
+    fold_size = len(X) // folds
+    
+    for fold in range(folds):
+        
+        mask = np.ones(len(X), dtype=bool)
+        mask[fold * fold_size : (fold + 1) * fold_size] = False
+        
+        x_train, y_train = X[mask], y[mask]
+        x_test, y_test = X[~mask], y[~mask]
+        
+        model = estimator.fit(x_train, y_train, **kwargs)
+        score = mean_squared_log_error(model.predict(x_test), y_test)
+        models_and_loss.append([model, score])
+    
+    return sorted(models_and_loss, key=lambda x: x[1], reverse=True)[0]
+
+
 def save_as_csv(id, revenue, file_name='submissions', **kwargs):
     
     """Save predicted revenues to a spesific format for kaggle competition.
