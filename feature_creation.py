@@ -89,11 +89,18 @@ def featurize(train, test):
     # normalize budget
     norm_budget = YNormal()
     norm_budget.fit(data.budget)
-    features['budget'] = norm_budget.transform(data.budget)
+    features['budget'] = norm_budget.transform(data.budget).fillna(0).apply(np.log1p).apply(lambda x: x*2)
 
     # normalize popularity
     norm_popularity = YNormal()
     norm_popularity.fit(data.popularity)
+    #
+    #
+    # NOTE
+    #
+    #
+    # RidgeCV and RandomForest did better job with logged popularity '.fillna(0).apply(np.log1p)'. 
+    # It might be helpful in stacking.
     features['popularity'] = norm_popularity.transform(data.popularity)
 
     # normalize runtime
