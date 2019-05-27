@@ -84,6 +84,14 @@ def json_to_dict(feature_column):
 			lambda x: ast.literal_eval(x) if x else dict())
 
 
+def get_unique_values(column, measure_column, oper=np.sum):
+    unique_features = np.unique(column)
+    
+    for feature in unique_features:
+        indices = np.where(column == feature)[0]
+        yield feature, np.sum(measure_column[indices])
+
+
 def get_json_features(feature_column, key_value, estimate_with, oper=operator.add):
 
 	"""Featurize json feature columns easier.

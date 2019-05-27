@@ -1,6 +1,8 @@
 import numpy as np
 import pandas as pd
 
+from collections import Counter
+
 import toolbox as tb
 
 
@@ -13,6 +15,7 @@ class YNormal:
         trans_data = (data - self.mean) / self.delta
         return trans_data
 
+    
 def my_get_dummies(data, features):
 
     """ :param
@@ -35,7 +38,6 @@ def my_get_dummies(data, features):
     dataframe = pd.DataFrame(np.array(dataframe).T, columns=features)
 
     return  dataframe
-
 
 
 def featurize(train, test):
@@ -89,7 +91,7 @@ def featurize(train, test):
     # normalize budget
     norm_budget = YNormal()
     norm_budget.fit(data.budget)
-    features['budget'] = norm_budget.transform(data.budget).fillna(0).apply(np.log1p).apply(lambda x: x*2)
+    features['budget'] = norm_budget.transform(data.budget).fillna(0).apply(np.log1p).apply(lambda x: x * 2)
 
     # normalize popularity
     norm_popularity = YNormal()
@@ -149,9 +151,20 @@ def featurize(train, test):
     features['not_same_title'][~same_title_mask] = 1
     
     # in notebook is shown that if the json string is longer, that might be an important feature
-    features['genres_feature_len'] = data.genres.apply(lambda x : len(x) if x != dict() else 0)
-    features['cast_feature_len'] = data.cast.apply(lambda x: len(x) if x != dict() else 0)
+    features['genres_feature_len'] = np.log1p(data.genres.apply(lambda x : len(x) if x != dict() else 0))
+    features['cast_feature_len'] = np.log2(data.cast.apply(lambda x: len(x) if x != dict() else 0))
+    features['crew_len'] = np.log1p(data.cast.apply(lambda x: len(x) if x != dict() else 0))
 
+    all_crew_members = [dict['name'] for dicts in tb.json_to_dict(train['crew'].fillna('')) for dict in dicts]
+    top_crew_names, _ = np.array(Counter(all_crew_members).most_common(15)).T
+    
+    all_depar_members = [dict['name'] for dicts in tb.json_to_dict(train['crew'].fillna('')) for dict in dicts]
+    top_depar_names, _ = np.array(Counter(all_depar_members).most_common(15)).T
+    
+    for c_name, d_name in zip(top_crew_names, top_depar_names):
+        features[f'crew_name_{c_name}'] = train['crew'].apply(lambda x: 1 if c_name in str(x) else 0)
+        features[f'depar_name_{d_name}'] = train['crew'].apply(lambda x: 1 if d_name in str(x) else 0)
+        
     # reseparating featurized train and test data
     train_features = features[:train.shape[0]]
     test_features = features[
@@ -174,13 +187,11 @@ def featurize(train, test):
                                   'superhero', 'sequel', '3d']))
 
     train_features = train_features.join(my_get_dummies(train['cast'],
-                                 ['Samuel L. Jackson', 'Stan Lee',
-                                  'Frank Welker', 'Jeremy Renner',
-                                  'Johnny Depp']))
+                                 ['Samuel L. Jackson', 'Robert De Niro', 
+                                  'Frank Welker', 'Stan Lee']))
     test_features = test_features.join(my_get_dummies(test['cast'],
-                                 ['Samuel L. Jackson', 'Stan Lee',
-                                  'Frank Welker', 'Jeremy Renner',
-                                  'Johnny Depp']))
+                                 ['Samuel L. Jackson', 'Robert De Niro', 
+                                  'Frank Welker', 'Stan Lee']))
     
     train_features = train_features.join(my_get_dummies(train['spoken_languages'],
                                  ['English', 'Español', 'Français', 
@@ -188,7 +199,24 @@ def featurize(train, test):
     test_features = test_features.join(my_get_dummies(test['spoken_languages'],
                                  ['English', 'Español', 'Français', 
                                   'Deutsch']))
-
+    
+    train_features = train_features.join(my_get_dummies(train['production_companies'],
+                                 ['Warner Bros.', 'Universal Pictures', 'Paramount Pictures']))
+    test_features = test_features.join(my_get_dummies(test['production_companies'],
+                                 ['Warner Bros.', 'Universal Pictures', 'Paramount Pictures']))
+    
+    train_features = train_features.join(my_get_dummies(train['production_countries'],
+                                 ['United States of America', 'United Kingdom', 
+                                  'Germany', 'Canada']))
+    test_features = test_features.join(my_get_dummies(test['production_countries'],
+                                 ['United States of America', 'United Kingdom', 
+                                  'Germany', 'Canada']))
+    
+    train_features = train_features.join(my_get_dummies(train['crew'],
+                                 ['Steven Spielberg']))
+    test_features = test_features.join(my_get_dummies(test['crew'],
+                                 ['Steven Spielberg']))
+    
     targets = np.log(train[["revenue"]])
 
     return train_features, test_features, targets
