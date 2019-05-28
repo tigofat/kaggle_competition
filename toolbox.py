@@ -66,19 +66,6 @@ def root_mean_squared_log_error(predictions, targets):
     return loss, sk_loss
 
 
-def get_features(dataframe, col_name, based_on, func, **kwargs):
-    
-    # this function is helpful whenever you need, something like: 
-    # What is the maximum amount of money spent on films where played actor X.
-    
-    features = dataframe[col_name].unique()
-    
-    feature_mask = [(dataframe[col_name] == feature, feature) for feature in features]
-    means = [(feature, func(dataframe[based_on][mask], **kwargs)) for mask, feature in feature_mask]
-
-    return sorted(means, key=lambda x: x[1], reverse=True)
-
-
 def json_to_dict(feature_column):
 	return feature_column.apply(
 			lambda x: ast.literal_eval(x) if x else dict())
@@ -121,18 +108,3 @@ def get_json_features(feature_column, key_value, estimate_with, oper=operator.ad
 	return sorted(value_estim.items(),
 					key=lambda x: x[1],
 					reverse=True)
-
-
-if __name__ == "__main__":
-    # Few examples using get_features function.
-    fake_df = pd.DataFrame({'films': ['movie1', 'movie2', 'movie3', 'movie4'], 
-                        'actors': ['actor1', 'actor1', 'actor2', 'actor2'],
-                       'revenue': [100, 200, 300, 400]})
-    
-    # Get movie names where the revenues are the highest (sorted from best to worst).
-    highest_rev_movies = get_features(fake_df, 'films', 'revenue', np.max)
-    
-    # Get the most expansive movie for every actor, who played in it.
-    # In this case actor2 played in two films (in movie3 and movie4), but the revenue of movie3 is higher, and the same happend 
-    # for actor1 and for every actor in the column as shown below.
-    exp_movie_for_every_actor = get_features(fake_df, 'actors', 'revenue', np.max)
