@@ -65,18 +65,18 @@ def featurize(train, test):
 
     # get columns where features are given in json format 
     # and turn them into dicts.
-    json_feat = ['belongs_to_collection', 'genres', 
-                'spoken_languages', 'Keywords', 
-                'cast', 'crew']
+#     json_feat = ['belongs_to_collection', 'genres', 
+#                 'spoken_languages', 'Keywords', 
+#                 'cast', 'crew']
 
-    data[json_feat] = data[json_feat].fillna(0)
+#     data[json_feat] = data[json_feat].fillna('')
 
-    for name in json_feat:
-        data[name] = tb.json_to_dict(data[name])
+#     for name in json_feat:
+#         data[name] = tb.json_to_dict(data[name])
         
-    features['genders_0_crew'] = data.crew.apply(lambda x: sum(1 for item in x if item['gender'] == 0))
-    features['genders_1_crew'] = data.crew.apply(lambda x: sum(1 for item in x if item['gender'] == 1))
-    features['genders_2_crew'] = data.crew.apply(lambda x: sum(1 for item in x if item['gender'] == 2))
+#     features['genders_0_crew'] = data.crew.apply(lambda x: sum(1 for item in x if item['gender'] == 0))
+#     features['genders_1_crew'] = data.crew.apply(lambda x: sum(1 for item in x if item['gender'] == 1))
+#     features['genders_2_crew'] = data.crew.apply(lambda x: sum(1 for item in x if item['gender'] == 2))
 
     # if film's 'belongs_to_collection' feature
     # is not nan: 'is_from_coll' feature is 1, else: 0
@@ -91,25 +91,18 @@ def featurize(train, test):
     # normalize budget
     norm_budget = YNormal()
     norm_budget.fit(data.budget)
-    features['budget'] = norm_budget.transform(data.budget).fillna(0).apply(np.log1p).apply(lambda x: x * 2)
+    features['budget'] = norm_budget.transform(data.budget).fillna(0).apply(np.log1p)
 
     # normalize popularity
     norm_popularity = YNormal()
     norm_popularity.fit(data.popularity)
-    #
-    #
-    # NOTE
-    #
-    #
-    # RidgeCV and RandomForest did better job with logged popularity '.fillna(0).apply(np.log1p)'. 
-    # It might be helpful in stacking.
-    features['popularity'] = norm_popularity.transform(data.popularity)
+    features['popularity'] = norm_popularity.transform(data.popularity).fillna(0).apply(np.log1p)
 
     # normalize runtime
     norm_runtime = YNormal()
     data.runtime = data.runtime.fillna(data.runtime.mean())
     norm_runtime.fit(data.runtime)
-    features['runtime'] = norm_runtime.transform(data.runtime)
+    features['runtime'] = norm_runtime.transform(data.runtime.fillna(data.runtime.mean()).apply(np.log1p))
 
     # see comment for 'is_from_coll' feature, same for 'is_tagline' feat.
     features['is_tagline'] = np.array(
@@ -134,36 +127,30 @@ def featurize(train, test):
         pd.isna(data.homepage), dtype=int)
     
     # add release data feature
-    data['release_date'].replace(np.nan, '', inplace=True)
+    fixed_years = data['release_date'].replace(np.nan, '')
     years = np.array([f'20{date[-2:]}' if date[-2:].startswith('0') else f'19{date[-2:]}' 
-                  for date in data['release_date'].values], dtype=int)
+                  for date in fixed_years.values], dtype=int)
     
-    data['release_year'] = years
-    release_date_mask = np.array((years <= 1900) + (years >= 1990), dtype=np.bool)
+    release_date_mask = np.array((years >= 1980), dtype=np.bool)
     features['is_date'] = release_date_mask.astype(np.uint8)
     features['not_date'] = (~release_date_mask).astype(np.uint8)
     
     # if the films title is the same 1, otherwise 0
-    features['is_same_title'] = 0
-    features['not_same_title'] = 0
-    same_title_mask = data.original_title == data.title
-    features['is_same_title'][same_title_mask] = 1
-    features['not_same_title'][~same_title_mask] = 1
-    
-    # in notebook is shown that if the json string is longer, that might be an important feature
-    features['genres_feature_len'] = np.log1p(data.genres.apply(lambda x : len(x) if x != dict() else 0))
-    features['cast_feature_len'] = np.log2(data.cast.apply(lambda x: len(x) if x != dict() else 0))
-    features['crew_len'] = np.log1p(data.cast.apply(lambda x: len(x) if x != dict() else 0))
+#     features['is_same_title'] = 0
+#     features['not_same_title'] = 0
+#     same_title_mask = data.original_title == data.title
+#     features['is_same_title'][same_title_mask] = 1
+#     features['not_same_title'][~same_title_mask] = 1
 
-    all_crew_members = [dict['name'] for dicts in tb.json_to_dict(train['crew'].fillna('')) for dict in dicts]
-    top_crew_names, _ = np.array(Counter(all_crew_members).most_common(15)).T
+#     all_crew_members = [dict['name'] for dicts in train['crew'] for dict in dicts]
+#     top_crew_names, _ = np.array(Counter(all_crew_members).most_common(2)).T
     
-    all_depar_members = [dict['name'] for dicts in tb.json_to_dict(train['crew'].fillna('')) for dict in dicts]
-    top_depar_names, _ = np.array(Counter(all_depar_members).most_common(15)).T
+#     all_depar_members = [dict['department'] for dicts in train['crew'] for dict in dicts]
+#     top_depar_names, _ = np.array(Counter(all_depar_members).most_common(2)).T
     
-    for c_name, d_name in zip(top_crew_names, top_depar_names):
-        features[f'crew_name_{c_name}'] = train['crew'].apply(lambda x: 1 if c_name in str(x) else 0)
-        features[f'depar_name_{d_name}'] = train['crew'].apply(lambda x: 1 if d_name in str(x) else 0)
+#     for c_name, d_name in zip(top_crew_names, top_depar_names):
+#         features[f'crew_name_{c_name}'] = train['crew'].apply(lambda x: 1 if c_name in str(x) else 0)
+#         features[f'depar_name_{d_name}'] = train['crew'].apply(lambda x: 1 if d_name in str(x) else 0)
         
     # reseparating featurized train and test data
     train_features = features[:train.shape[0]]
@@ -172,51 +159,51 @@ def featurize(train, test):
     test_features = test_features.drop(['index'], axis=1)
 
     #dummie features
-    train_features = train_features.join(my_get_dummies(train['genres'],
-                                 ['Action', 'Adventure', 'Drama',
-                                  'Comedy', 'Thriller']))
-    test_features = test_features.join(my_get_dummies(test['genres'],
-                                 ['Action', 'Adventure', 'Drama',
-                                  'Comedy', 'Thriller']))
+#     train_features = train_features.join(my_get_dummies(train['genres'],
+#                                  ['Action', 'Adventure', 'Drama',
+#                                   'Comedy', 'Thriller']))
+#     test_features = test_features.join(my_get_dummies(test['genres'],
+#                                  ['Action', 'Adventure', 'Drama',
+#                                   'Comedy', 'Thriller']))
 
-    train_features = train_features.join(my_get_dummies(train['Keywords'],
-                                 ['duringcreditsstinger', 'aftercreditsstinger',
-                                  'superhero', 'sequel', '3d']))
-    test_features = test_features.join(my_get_dummies(test['Keywords'],
-                                 ['duringcreditsstinger', 'aftercreditsstinger',
-                                  'superhero', 'sequel', '3d']))
+#     train_features = train_features.join(my_get_dummies(train['Keywords'],
+#                                  ['duringcreditsstinger', 'aftercreditsstinger',
+#                                   'superhero']))
+#     test_features = test_features.join(my_get_dummies(test['Keywords'],
+#                                  ['duringcreditsstinger', 'aftercreditsstinger',
+#                                   'superhero']))
 
-    train_features = train_features.join(my_get_dummies(train['cast'],
-                                 ['Samuel L. Jackson', 'Robert De Niro', 
-                                  'Frank Welker', 'Stan Lee']))
-    test_features = test_features.join(my_get_dummies(test['cast'],
-                                 ['Samuel L. Jackson', 'Robert De Niro', 
-                                  'Frank Welker', 'Stan Lee']))
+#     train_features = train_features.join(my_get_dummies(train['cast'],
+#                                  ['Samuel L. Jackson', 'Robert De Niro', 
+#                                   'Frank Welker', 'Stan Lee']))
+#     test_features = test_features.join(my_get_dummies(test['cast'],
+#                                  ['Samuel L. Jackson', 'Robert De Niro', 
+#                                   'Frank Welker', 'Stan Lee']))
     
-    train_features = train_features.join(my_get_dummies(train['spoken_languages'],
-                                 ['English', 'Español', 'Français', 
-                                  'Deutsch']))
-    test_features = test_features.join(my_get_dummies(test['spoken_languages'],
-                                 ['English', 'Español', 'Français', 
-                                  'Deutsch']))
+#     train_features = train_features.join(my_get_dummies(train['spoken_languages'],
+#                                  ['English', 'Español', 'Français', 
+#                                   'Deutsch']))
+#     test_features = test_features.join(my_get_dummies(test['spoken_languages'],
+#                                  ['English', 'Español', 'Français', 
+#                                   'Deutsch']))
     
     train_features = train_features.join(my_get_dummies(train['production_companies'],
                                  ['Warner Bros.', 'Universal Pictures', 'Paramount Pictures']))
     test_features = test_features.join(my_get_dummies(test['production_companies'],
                                  ['Warner Bros.', 'Universal Pictures', 'Paramount Pictures']))
     
-    train_features = train_features.join(my_get_dummies(train['production_countries'],
-                                 ['United States of America', 'United Kingdom', 
-                                  'Germany', 'Canada']))
-    test_features = test_features.join(my_get_dummies(test['production_countries'],
-                                 ['United States of America', 'United Kingdom', 
-                                  'Germany', 'Canada']))
+#     train_features = train_features.join(my_get_dummies(train['production_countries'],
+#                                  ['United States of America', 'United Kingdom', 
+#                                   'Germany', 'Canada']))
+#     test_features = test_features.join(my_get_dummies(test['production_countries'],
+#                                  ['United States of America', 'United Kingdom', 
+#                                   'Germany', 'Canada']))
     
-    train_features = train_features.join(my_get_dummies(train['crew'],
-                                 ['Steven Spielberg']))
-    test_features = test_features.join(my_get_dummies(test['crew'],
-                                 ['Steven Spielberg']))
+#     train_features = train_features.join(my_get_dummies(train['crew'],
+#                                  ['Steven Spielberg']))
+#     test_features = test_features.join(my_get_dummies(test['crew'],
+#                                  ['Steven Spielberg']))
     
-    targets = np.log(train[["revenue"]])
+    targets = np.log1p(train[["revenue"]])
 
     return train_features, test_features, targets
