@@ -103,6 +103,30 @@ def save_as_csv(id, revenue, file_name='submissions', **kwargs):
     pd.DataFrame({'revenue': revenue}, index=id).to_csv(f'{file_name}.csv', **kwargs)
 
 
+<<<<<<< HEAD
+=======
+def root_mean_squared_log_error(predictions, targets):
+    
+    """Calculate root mean squared logarithmic error.
+    
+    Parameters
+    
+    predictions : predicted target values.
+    targets : actual target values.
+    
+    Returns
+    
+    loss : the loss implemeted with root mean squared logarithmic error.
+    sk_loss : the same loss implemeted with sklearn package.
+    """
+    
+    sum_ = np.sum(np.square(np.log(predictions + 1) - np.log(targets + 1)))
+    loss = np.sqrt(sum_ / len(targets))
+    sk_loss = np.sqrt(mean_squared_log_error(targets, predictions))
+    return loss, sk_loss
+
+
+>>>>>>> master
 def json_to_dict(feature_column):
 	return feature_column.apply(
 			lambda x: ast.literal_eval(x) if x else dict())
@@ -144,4 +168,8 @@ def get_json_features(feature_column, key_value, estimate_with, oper=operator.ad
 
 	return sorted(value_estim.items(),
 					key=lambda x: x[1],
+<<<<<<< HEAD
 					reverse=True)
+=======
+					reverse=True)
+>>>>>>> master
